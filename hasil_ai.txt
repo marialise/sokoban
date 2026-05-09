@@ -1,0 +1,37 @@
+LAPORAN HASIL SOKOBAN AI
+Dibuat pada: 2026-05-09 14:55:55
+=======================================================
+
+=======================================================
+  HASIL SOKOBAN - MODE MANUAL
+=======================================================
+  Waktu        : 2026-05-09 14:56:01
+  Level        : 1
+  Mode         : Manual (Dimainkan Sendiri)
+  Status       : Level Selesai!
+  Total Moves  : 9
+=======================================================
+
+=======================================================
+  HASIL SOKOBAN - MODE MANUAL
+=======================================================
+  Waktu        : 2026-05-09 14:56:23
+  Level        : 2
+  Mode         : Manual (Dimainkan Sendiri)
+  Status       : Level Selesai!
+  Total Moves  : 32
+=======================================================
+
+=======================================================
+  HASIL SOKOBAN AI
+=======================================================
+  Waktu        : 2026-05-09 14:56:52
+  Level        : 3
+  Algoritma    : A* (Manhattan)
+  Status       : Berhasil
+  Waktu Proses : 0.00492 detik
+  Total Moves  : 25
+  Panjang Solusi: 25 langkah
+  Solusi       : LUULURLDDLUDLDRRURDLDRRRR
+=======================================================
+
