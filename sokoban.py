@@ -1,5 +1,6 @@
 import random
 import time
+import os
 
 import pygame
 import pygame_widgets
@@ -14,11 +15,56 @@ from src.widgets import sidebar_widgets
 
 random.seed(6)
 
+# ============================================================
+# FUNGSI EXPORT HASIL KE FILE TXT
+# ============================================================
+def export_hasil(algoritma, level, solution, depth, runtime, moves, status="Berhasil"):
+	filename = "hasil_ai.txt"
+	timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+	with open(filename, "a", encoding="utf-8") as f:
+		f.write("=" * 55 + "\n")
+		f.write(f"  HASIL SOKOBAN AI\n")
+		f.write("=" * 55 + "\n")
+		f.write(f"  Waktu        : {timestamp}\n")
+		f.write(f"  Level        : {level}\n")
+		f.write(f"  Algoritma    : {algoritma}\n")
+		f.write(f"  Status       : {status}\n")
+		f.write(f"  Waktu Proses : {runtime} detik\n")
+		f.write(f"  Total Moves  : {moves}\n")
+		if solution:
+			f.write(f"  Panjang Solusi: {len(solution)} langkah\n")
+			f.write(f"  Solusi       : {solution}\n")
+		else:
+			f.write(f"  Kedalaman    : {depth}\n")
+		f.write("=" * 55 + "\n\n")
+	print(f"[INFO] Hasil disimpan ke '{filename}'")
 
+
+def export_manual(level, moves):
+	filename = "hasil_ai.txt"
+	timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+	with open(filename, "a", encoding="utf-8") as f:
+		f.write("=" * 55 + "\n")
+		f.write(f"  HASIL SOKOBAN - MODE MANUAL\n")
+		f.write("=" * 55 + "\n")
+		f.write(f"  Waktu        : {timestamp}\n")
+		f.write(f"  Level        : {level}\n")
+		f.write(f"  Mode         : Manual (Dimainkan Sendiri)\n")
+		f.write(f"  Status       : Level Selesai!\n")
+		f.write(f"  Total Moves  : {moves}\n")
+		f.write("=" * 55 + "\n\n")
+	print(f"[INFO] Hasil manual disimpan ke '{filename}'")
+
+
+# ============================================================
+# GAME LOOP
+# ============================================================
 def play_game(window, level=1, random_game=False, random_seed=None, **widgets):
 	moves = runtime = 0
 	show_solution = False
+	current_algo = None
 	widgets['paths'].transparency = False
+
 	if random_game:
 		if not random_seed:
 			random_seed = random.randint(0, 99999)
@@ -35,46 +81,35 @@ def play_game(window, level=1, random_game=False, random_seed=None, **widgets):
 		widgets['label'].set_text(f'Seed {random_seed}', 18)
 	else:
 		widgets['label'].set_text(f'Level {level}', 30)
+
 	game = Game(level=level, window=window)
 	game_loop = True
+
 	while game_loop:
 		events = pygame.event.get()
 		for event in events:
 			if event.type == pygame.QUIT:
 				game_loop = False
-				return {
-					'keep_playing': False,
-					'reset': -1, 
-					'random_game': False,
-				}
+				return {'keep_playing': False, 'reset': -1, 'random_game': False}
+
 			elif event.type == RESTART_EVENT:
 				game_loop = False
 				print(f'Restarting level {level}\n')
 				window.fill((0, 0, 0, 0))
-				return {
-					'keep_playing': True,
-					'reset': level, 
-					'random_game': random_game,
-					'random_seed': random_seed,
-				}
+				return {'keep_playing': True, 'reset': level, 'random_game': random_game, 'random_seed': random_seed}
+
 			elif event.type == PREVIOUS_EVENT:
 				game_loop = False
 				print(f'Previous level {level - 1}\n')
 				window.fill((0, 0, 0, 0))
-				return {
-					'keep_playing': True,
-					'reset': level - 1, 
-					'random_game': False
-				}
+				return {'keep_playing': True, 'reset': level - 1, 'random_game': False}
+
 			elif event.type == NEXT_EVENT:
 				game_loop = False
 				print(f'Next level {level + 1}\n')
 				window.fill((0, 0, 0, 0))
-				return {
-					'keep_playing': True,
-					'reset': level + 1, 
-					'random_game': False
-				}
+				return {'keep_playing': True, 'reset': level + 1, 'random_game': False}
+
 			elif event.type == RANDOM_GAME_EVENT:
 				game_loop = False
 				print('Loading a random puzzle\n')
@@ -87,46 +122,40 @@ def play_game(window, level=1, random_game=False, random_seed=None, **widgets):
 						raise ValueError('Seed must be between 1 and 99999')
 				except ValueError as e:
 					print(e)
-				return {
-					'keep_playing': True,
-					'reset': 0, 
-					'random_game': True,
-					'random_seed': new_seed
-				}
+				return {'keep_playing': True, 'reset': 0, 'random_game': True, 'random_seed': new_seed}
+
 			elif event.type == SOLVE_BFS_EVENT:
 				print('Finding a solution for the puzzle\n')
 				widgets['paths'].reset('Solving with [BFS]')
 				show_solution = True
+				current_algo = "BFS"
 				start = time.time()
 				solution, depth = solve_bfs(
-					game.get_matrix(), 
-					widget=widgets['paths'], 
+					game.get_matrix(),
+					widget=widgets['paths'],
 					visualizer=widgets['toggle'].getValue()
 				)
 				runtime = round(time.time() - start, 5)
 				if solution:
 					widgets['paths'].solved = True
 					widgets['paths'].transparency = True
-					widgets['paths'].set_text(
-						f'[BFS] Solution Found in {runtime}s!\n{solution}',
-						20,
-					)
+					widgets['paths'].set_text(f'[BFS] Solution Found in {runtime}s!\n{solution}', 20)
 					moves = play_solution(solution, game, widgets, show_solution, moves)
+					export_hasil("BFS", level, solution, depth, runtime, len(solution), "Berhasil")
 				else:
 					widgets['paths'].solved = False
-					widgets['paths'].set_text(
-						'[BFS] Solution Not Found!\n' + 
-						('Deadlock Found!' if depth < 0 else f'Depth {depth}'), 
-						20,
-					)
+					widgets['paths'].set_text('[BFS] Solution Not Found!\n' + ('Deadlock Found!' if depth < 0 else f'Depth {depth}'), 20)
+					export_hasil("BFS", level, None, depth, runtime, 0, "Tidak Ditemukan")
+
 			elif event.type == SOLVE_ASTARMAN_EVENT:
 				print('Finding a solution for the puzzle\n')
 				widgets['paths'].reset('Solving with [A*]')
 				show_solution = True
+				current_algo = "A* (Manhattan)"
 				start = time.time()
 				solution, depth = solve_astar(
-					game.get_matrix(), 
-					widget=widgets['paths'], 
+					game.get_matrix(),
+					widget=widgets['paths'],
 					visualizer=widgets['toggle'].getValue(),
 					heuristic='manhattan',
 				)
@@ -134,26 +163,23 @@ def play_game(window, level=1, random_game=False, random_seed=None, **widgets):
 				if solution:
 					widgets['paths'].solved = True
 					widgets['paths'].transparency = True
-					widgets['paths'].set_text(
-						f'[A*] Solution Found in {runtime}s!\n{solution}',
-						20,
-					)
+					widgets['paths'].set_text(f'[A*] Solution Found in {runtime}s!\n{solution}', 20)
 					moves = play_solution(solution, game, widgets, show_solution, moves)
+					export_hasil("A* (Manhattan)", level, solution, depth, runtime, len(solution), "Berhasil")
 				else:
 					widgets['paths'].solved = False
-					widgets['paths'].set_text(
-						'[A*] Solution Not Found!\n' + 
-						('Deadlock Found!' if depth < 0 else f'Depth {depth}'), 
-						20,
-					)
+					widgets['paths'].set_text('[A*] Solution Not Found!\n' + ('Deadlock Found!' if depth < 0 else f'Depth {depth}'), 20)
+					export_hasil("A* (Manhattan)", level, None, depth, runtime, 0, "Tidak Ditemukan")
+
 			elif event.type == SOLVE_DIJKSTRA_EVENT:
 				print('Finding a solution for the puzzle\n')
 				widgets['paths'].reset('Solving with [Dijkstra]')
 				show_solution = True
+				current_algo = "Dijkstra"
 				start = time.time()
 				solution, depth = solve_astar(
-					game.get_matrix(), 
-					widget=widgets['paths'], 
+					game.get_matrix(),
+					widget=widgets['paths'],
 					visualizer=widgets['toggle'].getValue(),
 					heuristic='dijkstra',
 				)
@@ -161,18 +187,14 @@ def play_game(window, level=1, random_game=False, random_seed=None, **widgets):
 				if solution:
 					widgets['paths'].solved = True
 					widgets['paths'].transparency = True
-					widgets['paths'].set_text(
-						f'[Dijkstra] Solution Found in {runtime}s!\n{solution}',
-						20
-					)
+					widgets['paths'].set_text(f'[Dijkstra] Solution Found in {runtime}s!\n{solution}', 20)
 					moves = play_solution(solution, game, widgets, show_solution, moves)
+					export_hasil("Dijkstra", level, solution, depth, runtime, len(solution), "Berhasil")
 				else:
 					widgets['paths'].solved = False
-					widgets['paths'].set_text(
-						'[Dijkstra] Solution Not Found!\n' + 
-						('Deadlock Found!' if depth < 0 else f'Depth {depth}'), 
-						20,
-					)
+					widgets['paths'].set_text('[Dijkstra] Solution Not Found!\n' + ('Deadlock Found!' if depth < 0 else f'Depth {depth}'), 20)
+					export_hasil("Dijkstra", level, None, depth, runtime, 0, "Tidak Ditemukan")
+
 			elif event.type == pygame.KEYDOWN:
 				if event.key in (pygame.K_d, pygame.K_RIGHT):
 					moves += game.player.update(key='R')
@@ -182,6 +204,7 @@ def play_game(window, level=1, random_game=False, random_seed=None, **widgets):
 					moves += game.player.update(key='U')
 				elif event.key in (pygame.K_s, pygame.K_DOWN):
 					moves += game.player.update(key='D')
+
 		game.floor_group.draw(window)
 		game.goal_group.draw(window)
 		game.object_group.draw(window)
@@ -193,25 +216,28 @@ def play_game(window, level=1, random_game=False, random_seed=None, **widgets):
 		if show_solution:
 			widgets['paths'].draw()
 		pygame.display.update()
+
 		if game.is_level_complete():
 			print(f'Level Complete! - {moves} moves')
+			if current_algo is None:
+				export_manual(level, moves)
 			widgets['level_clear'].draw()
 			pygame.display.update()
 			game_loop = False
-			wait = True 
+			wait = True
 			while wait:
 				for event in pygame.event.get():
 					if event.type == pygame.KEYDOWN or event.type == pygame.MOUSEBUTTONDOWN:
 						wait = False
+
 	del game
 	print('Objects cleared!\n')
-	return {
-		'keep_playing': True,
-		'reset': 0 if random_game else -1, 
-		'random_game': random_game,
-	}
+	return {'keep_playing': True, 'reset': 0 if random_game else -1, 'random_game': random_game}
 
 
+# ============================================================
+# MAIN
+# ============================================================
 def main():
 	pygame.init()
 	displayIcon = pygame.image.load('img/icon.png')
@@ -223,6 +249,14 @@ def main():
 	random_game = False
 	random_seed = None
 	widgets = sidebar_widgets(window)
+
+	# Buat file hasil_ai.txt baru di awal
+	with open("hasil_ai.txt", "w", encoding="utf-8") as f:
+		f.write("LAPORAN HASIL GAME SOKOBAN \n")
+		f.write(f"Dibuat pada: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+		f.write("=" * 55 + "\n\n")
+	print("[INFO] File 'hasil_ai.txt' siap mencatat hasil.\n")
+
 	while keep_playing:
 		print(f'Loading level {level}\n' if level > 0 else 'Loading random game')
 		game_data = play_game(window, level, random_game, random_seed, **widgets)
@@ -235,7 +269,7 @@ def main():
 		random_seed = game_data.get('random_seed')
 		level = reset if reset >= 0 else min(level + 1, 7)
 
-	
+
 if __name__ == '__main__':
 	# wall: +, box: @, player: *, goal: X, box on goal: $, player on goal: %, empty: -
 	main()
