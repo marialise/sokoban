@@ -8,6 +8,10 @@ from .floor import Floor, Goal
 from .player import Player, ReversePlayer
 
 
+SIDEBAR_START_X = 1024
+SIDEBAR_COLOR = (255, 255, 255)
+
+
 class PuzzleElement:
     def __init__(self, char, obj=None, ground=None):
         self.char = char
@@ -17,6 +21,7 @@ class PuzzleElement:
     def __str__(self):
         return self.char
 
+
 class Game:
     def __init__(self, window=None, width=1216, height=640, level=None, seed=None, path=None):
         self.seed = seed
@@ -24,6 +29,9 @@ class Game:
         self.level = level
         self.width = width
         self.height = height
+
+        self.game_area_width = SIDEBAR_START_X
+
         self.puzzle = np.empty((height // 64, width // 64), dtype=PuzzleElement)
         self.floor_group = pygame.sprite.Group()
         self.object_group = pygame.sprite.Group()
@@ -34,23 +42,35 @@ class Game:
         self.pad_x = 0
         self.pad_y = 0
         self.path = path or f'levels/lvl{level}.dat'
+
         self.load_floor()
+
         if type(self) == Game:
             self.load_puzzle()
 
     def __del__(self):
         self.clear_objects()
 
+    def draw_sidebar_background(self):
+        if self.window:
+            pygame.draw.rect(
+                self.window,
+                SIDEBAR_COLOR,
+                (SIDEBAR_START_X, 0, self.width - SIDEBAR_START_X, self.height)
+            )
+
     def get_matrix(self):
         slice_x = slice(self.pad_x, self.pad_x + self.puzzle_size[1])
         slice_y = slice(self.pad_y, self.pad_y + self.puzzle_size[0])
         sliced = self.puzzle[slice_y, slice_x]
         matrix = np.empty((self.puzzle_size), dtype='<U1')
+
         for h in range(len(sliced)):
             for w in range(len(sliced[0])):
                 matrix[h, w] = sliced[h, w].char
+
         return matrix
-    
+
     def get_curr_state(self):
         return get_state(self.get_matrix())
 
@@ -65,62 +85,84 @@ class Game:
 
     def is_level_complete(self):
         boxes_left = 0
+
         for h in range(self.height // 64):
             for w in range(self.width // 64):
                 if self.puzzle[h, w] and self.puzzle[h, w].char == '@':
                     boxes_left += 1
+
         return boxes_left == 0
 
     def clear_objects(self):
         for sprite in self.object_group:
             del sprite
+
         for sprite in self.floor_group:
             del sprite
 
     def load_floor(self):
-        for i in range(self.width // 64):
+        for i in range(self.game_area_width // 64):
             for j in range(self.height // 64):
                 Floor(self.floor_group, x=i, y=j)
+
+        self.draw_sidebar_background()
 
     def load_puzzle(self):
         try:
             with open(self.path) as f:
                 lines = f.readlines()
                 self.puzzle_size = (len(lines), len(lines[0].strip().split()))
-                pad_x = (self.width // 64 - self.puzzle_size[1] - 2) // 2
+
+                pad_x = (self.game_area_width // 64 - self.puzzle_size[1]) // 2
                 pad_y = (self.height // 64 - self.puzzle_size[0]) // 2
+
                 self.pad_x, self.pad_y = pad_x, pad_y
+
             with open(self.path) as f:
                 for i, line in enumerate(f):
                     for j, c in enumerate(line.strip().split()):
                         new_elem = PuzzleElement(c)
                         self.puzzle[i + pad_y, j + pad_x] = new_elem
-                        if c == '+':  # wall
+
+                        if c == '+':
                             new_elem.obj = Obstacle(self.object_group, x=j + pad_x, y=i + pad_y)
-                        elif c == '@':  # box
+
+                        elif c == '@':
                             new_elem.obj = Box(self.object_group, x=j + pad_x, y=i + pad_y, game=self)
-                        elif c == '*':  # player
+
+                        elif c == '*':
                             new_elem.obj = Player(
-                                self.object_group, self.player_group, 
-                                x=j + pad_x, y=i + pad_y, game=self
+                                self.object_group,
+                                self.player_group,
+                                x=j + pad_x,
+                                y=i + pad_y,
+                                game=self
                             )
                             self.player = new_elem.obj
-                        elif c == 'X':  # goal
+
+                        elif c == 'X':
                             new_elem.ground = Goal(self.goal_group, x=j + pad_x, y=i + pad_y)
-                        elif c == '$':  # box on goal
+
+                        elif c == '$':
                             new_elem.ground = Goal(self.goal_group, x=j + pad_x, y=i + pad_y)
-                            new_elem.obj = Box(self.object_group,  x=j + pad_x, y=i + pad_y, game=self)
-                        elif c == '%':  # player on goal
+                            new_elem.obj = Box(self.object_group, x=j + pad_x, y=i + pad_y, game=self)
+
+                        elif c == '%':
                             new_elem.obj = Player(
-                                self.object_group, self.player_group, 
-                                x=j + pad_x, y=i + pad_y, game=self
+                                self.object_group,
+                                self.player_group,
+                                x=j + pad_x,
+                                y=i + pad_y,
+                                game=self
                             )
                             new_elem.ground = Goal(self.goal_group, x=j + pad_x, y=i + pad_y)
                             self.player = new_elem.obj
+
                         elif c not in ' -':
                             raise ValueError(
                                 f'Invalid character on file lvl{self.level}.dat: {c}'
                             )
+
         except (OSError, ValueError) as e:
             print(f'{e}')
             self.clear_objects()
@@ -134,35 +176,46 @@ class ReverseGame(Game):
         self.pad_y = 0
 
     def load_puzzle(self, puzzle):
-        pad_x = (self.width // 64 - len(puzzle[0]) - 2) // 2
+        pad_x = (self.game_area_width // 64 - len(puzzle[0])) // 2
         pad_y = (self.height // 64 - len(puzzle)) // 2
+
         self.pad_x, self.pad_y = pad_x, pad_y
+
         for i, row in enumerate(puzzle):
             for j, c in enumerate(row):
                 new_elem = PuzzleElement(c)
                 self.puzzle[i + pad_y, j + pad_x] = new_elem
-                if c == '+':  # wall
+
+                if c == '+':
                     new_elem.obj = Obstacle(self.object_group, x=j + pad_x, y=i + pad_y)
-                elif c == '@':  # box
+
+                elif c == '@':
                     new_elem.obj = Box(self.object_group, x=j + pad_x, y=i + pad_y, game=self)
-                elif c == '*':  # player
+
+                elif c == '*':
                     new_elem.obj = ReversePlayer(
-                        self.object_group, self.player_group, 
-                        x=j + pad_x, y=i + pad_y, game=self
+                        self.object_group,
+                        self.player_group,
+                        x=j + pad_x,
+                        y=i + pad_y,
+                        game=self
                     )
-                    self.player = new_elem.obj
-                elif c == 'X':  # goal
-                    new_elem.ground = Goal(self.goal_group, x=j + pad_x, y=i + pad_y)
-                elif c == '$':  # box on goal
-                    new_elem.ground = Goal(self.goal_group, x=j + pad_x, y=i + pad_y)
-                    new_elem.obj = Box(self.object_group,  x=j + pad_x, y=i + pad_y, game=self)
-                elif c == '%':  # player on goal
-                    new_elem.obj = ReversePlayer(
-                        self.object_group, self.player_group, 
-                        x=j + pad_x, y=i + pad_y, game=self
-                    )
-                    new_elem.ground = Goal(self.goal_group, x=j + pad_x, y=i + pad_y)
                     self.player = new_elem.obj
 
-    
-    
+                elif c == 'X':
+                    new_elem.ground = Goal(self.goal_group, x=j + pad_x, y=i + pad_y)
+
+                elif c == '$':
+                    new_elem.ground = Goal(self.goal_group, x=j + pad_x, y=i + pad_y)
+                    new_elem.obj = Box(self.object_group, x=j + pad_x, y=i + pad_y, game=self)
+
+                elif c == '%':
+                    new_elem.obj = ReversePlayer(
+                        self.object_group,
+                        self.player_group,
+                        x=j + pad_x,
+                        y=i + pad_y,
+                        game=self
+                    )
+                    new_elem.ground = Goal(self.goal_group, x=j + pad_x, y=i + pad_y)
+                    self.player = new_elem.obj
