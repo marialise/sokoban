@@ -240,7 +240,7 @@ def play_game(window, level=1, random_game=False, random_seed=None, **widgets):
 # ============================================================
 def main():
 	pygame.init()
-	displayIcon = pygame.image.load('img/icon.png')
+	displayIcon = pygame.image.load('img/logoo.png')
 	pygame.display.set_icon(displayIcon)
 	window = pygame.display.set_mode((1216, 640))
 	pygame.display.set_caption('Sokoban')
