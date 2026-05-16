@@ -4,7 +4,6 @@ import numpy as np
 import pygame
 import pygame_widgets
 
-
 def play_solution(solution, game, widgets, show_solution, moves):
 	for move in solution:
 		events = pygame.event.get()
@@ -14,15 +13,12 @@ def play_solution(solution, game, widgets, show_solution, moves):
 		game.object_group.draw(game.window)
 		pygame_widgets.update(events)
 		widgets['label'].draw()
-		widgets['seed'].draw()
-		widgets['visualizer'].draw()
 		widgets['moves_label'].set_moves(f' Moves - {moves} ', 20)
 		if show_solution:
 			widgets['paths'].draw()
 		pygame.display.update()
 		pygame.time.delay(130)
 	return moves
-
 
 def print_state(state, shape):
 	if not state:

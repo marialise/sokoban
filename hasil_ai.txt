@@ -1,14 +1,131 @@
 LAPORAN HASIL GAME SOKOBAN 
-Dibuat pada: 2026-05-11 13:19:52
+Dibuat pada: 2026-05-17 01:29:39
+=======================================================
+
+=======================================================
+  HASIL SOKOBAN AI
+=======================================================
+  Waktu        : 2026-05-17 01:29:45
+  Level        : 1
+  Algoritma    : BFS
+  Status       : Berhasil
+  Waktu Proses : 0.01236 detik
+  Total Moves  : 9
+  Panjang Solusi: 9 langkah
+  Solusi       : RRDURDDLL
+=======================================================
+
+=======================================================
+  HASIL SOKOBAN AI
+=======================================================
+  Waktu        : 2026-05-17 01:29:52
+  Level        : 2
+  Algoritma    : A* (Manhattan)
+  Status       : Berhasil
+  Waktu Proses : 0.00961 detik
+  Total Moves  : 28
+  Panjang Solusi: 28 langkah
+  Solusi       : LLLDRDLLRRDLURDRRULLLDLRUULD
+=======================================================
+
+=======================================================
+  HASIL SOKOBAN AI
+=======================================================
+  Waktu        : 2026-05-17 01:30:01
+  Level        : 3
+  Algoritma    : Dijkstra
+  Status       : Berhasil
+  Waktu Proses : 0.07905 detik
+  Total Moves  : 35
+  Panjang Solusi: 35 langkah
+  Solusi       : LUUDLLUURRLLDDRURULDLDLDRRURDLDRRRR
 =======================================================
 
 =======================================================
   HASIL SOKOBAN - MODE MANUAL
 =======================================================
-  Waktu        : 2026-05-11 13:20:09
-  Level        : 1
+  Waktu        : 2026-05-17 01:30:34
+  Level        : 0
   Mode         : Manual (Dimainkan Sendiri)
   Status       : Level Selesai!
-  Total Moves  : 9
+  Total Moves  : 1
+=======================================================
+
+=======================================================
+  HASIL SOKOBAN AI
+=======================================================
+  Waktu        : 2026-05-17 01:32:09
+  Level        : 4
+  Algoritma    : A* (Manhattan)
+  Status       : Berhasil
+  Waktu Proses : 0.07816 detik
+  Total Moves  : 43
+  Panjang Solusi: 43 langkah
+  Solusi       : URLLUDRRDRUURURDDUULLULLDRURDDDLLLULURRRURD
+=======================================================
+
+=======================================================
+  HASIL SOKOBAN AI
+=======================================================
+  Waktu        : 2026-05-17 01:32:23
+  Level        : 5
+  Algoritma    : Dijkstra
+  Status       : Berhasil
+  Waktu Proses : 0.59921 detik
+  Total Moves  : 50
+  Panjang Solusi: 50 langkah
+  Solusi       : ULULDLDRURRRURDRDLDLDLLLUULURRRRURDLDDRDLLRUUURRDL
+=======================================================
+
+=======================================================
+  HASIL SOKOBAN AI
+=======================================================
+  Waktu        : 2026-05-17 01:32:35
+  Level        : 6
+  Algoritma    : Dijkstra
+  Status       : Berhasil
+  Waktu Proses : 0.26912 detik
+  Total Moves  : 37
+  Panjang Solusi: 37 langkah
+  Solusi       : URURURURRRURRDLULDDDLDLDDRURULULDRDLL
+=======================================================
+
+=======================================================
+  HASIL SOKOBAN AI
+=======================================================
+  Waktu        : 2026-05-17 01:32:53
+  Level        : 7
+  Algoritma    : BFS
+  Status       : Berhasil
+  Waktu Proses : 9.08646 detik
+  Total Moves  : 29
+  Panjang Solusi: 29 langkah
+  Solusi       : LLDLLULDDUURRRDDLLRRDLRRRULLL
+=======================================================
+
+=======================================================
+  HASIL SOKOBAN AI
+=======================================================
+  Waktu        : 2026-05-17 01:33:14
+  Level        : 7
+  Algoritma    : BFS
+  Status       : Berhasil
+  Waktu Proses : 8.71236 detik
+  Total Moves  : 29
+  Panjang Solusi: 29 langkah
+  Solusi       : LLDLLULDDUURRRDDLLRRDLRRRULLL
+=======================================================
+
+=======================================================
+  HASIL SOKOBAN AI
+=======================================================
+  Waktu        : 2026-05-17 01:33:27
+  Level        : 7
+  Algoritma    : A* (Manhattan)
+  Status       : Berhasil
+  Waktu Proses : 0.02282 detik
+  Total Moves  : 43
+  Panjang Solusi: 43 langkah
+  Solusi       : LLDLLURRLDLULDDRURRDLRDLURDRRULLDLULUURDRDL
 =======================================================
 

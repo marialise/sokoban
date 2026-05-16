@@ -1,6 +1,7 @@
+import queue
 import random
+import threading
 import time
-import os
 
 import pygame
 import pygame_widgets
@@ -14,6 +15,26 @@ from src.utils import play_solution
 from src.widgets import sidebar_widgets
 
 random.seed(6)
+
+
+# ============================================================
+# LOADING SCREEN
+# ============================================================
+def show_loading_screen(window, message='Generating puzzle...'):
+	window.fill((255, 235, 245))
+	try:
+		logo = pygame.image.load('img/logo.png').convert_alpha()
+		logo = pygame.transform.scale(logo, (300, 300))
+		logo_rect = logo.get_rect(center=(1216 // 2, 640 // 2 - 40))
+		window.blit(logo, logo_rect)
+	except Exception:
+		pass
+	font = pygame.font.SysFont('Verdana', 24, bold=True)
+	text = font.render(message, True, (255, 105, 180))
+	text_rect = text.get_rect(center=(1216 // 2, 640 // 2 + 200))
+	window.blit(text, text_rect)
+	pygame.display.update()
+
 
 # ============================================================
 # FUNGSI EXPORT HASIL KE FILE TXT
@@ -57,6 +78,58 @@ def export_manual(level, moves):
 
 
 # ============================================================
+# GENERATE DI THREAD — main thread tampilkan loading screen
+# ============================================================
+def run_generate_threaded(window, random_seed):
+	gen_vis_queue = queue.Queue()
+
+	def _worker():
+		generate(
+			window=None,
+			seed=random_seed,
+			visualizer=False,
+			vis_queue=gen_vis_queue,
+		)
+
+	gen_thread = threading.Thread(target=_worker, daemon=True)
+	gen_thread.start()
+
+	clock = pygame.time.Clock()
+	dot_count = 0
+	dot_timer = 0
+
+	while True:
+		for event in pygame.event.get():
+			if event.type == pygame.QUIT:
+				pygame.quit()
+				quit()
+
+		dot_timer += clock.get_time()
+		if dot_timer > 400:
+			dot_count = (dot_count + 1) % 4
+			dot_timer = 0
+		dots = '.' * dot_count
+		show_loading_screen(window, message=f'Generating puzzle{dots}')
+
+		done = False
+		try:
+			while True:
+				msg = gen_vis_queue.get_nowait()
+				if msg[0] == 'done':
+					done = True
+					break
+		except queue.Empty:
+			pass
+
+		if done or not gen_thread.is_alive():
+			break
+
+		clock.tick(30)
+
+	gen_thread.join(timeout=2)
+
+
+# ============================================================
 # GAME LOOP
 # ============================================================
 def play_game(window, level=1, random_game=False, random_seed=None, **widgets):
@@ -65,10 +138,16 @@ def play_game(window, level=1, random_game=False, random_seed=None, **widgets):
 	current_algo = None
 	widgets['paths'].transparency = False
 
+	ai_queue = queue.Queue()
+	vis_queue = queue.Queue()
+	ai_thread = None
+	ai_start_time = None
+
 	if random_game:
 		if not random_seed:
 			random_seed = random.randint(0, 99999)
-		generate(window, seed=random_seed, visualizer=widgets['toggle'].getValue())
+		run_generate_threaded(window, random_seed)
+
 	if level <= 1:
 		widgets['prev_button'].hide()
 	else:
@@ -77,8 +156,10 @@ def play_game(window, level=1, random_game=False, random_seed=None, **widgets):
 		widgets['next_button'].hide()
 	else:
 		widgets['next_button'].show()
+
 	if random_game or level == 0:
-		widgets['label'].set_text(f'Seed {random_seed}', 18)
+		seed_display = str(random_seed)[:5] if random_seed else '?'
+		widgets['label'].set_text(f'#{seed_display}', 22)
 	else:
 		widgets['label'].set_text(f'Level {level}', 30)
 
@@ -93,6 +174,8 @@ def play_game(window, level=1, random_game=False, random_seed=None, **widgets):
 				return {'keep_playing': False, 'reset': -1, 'random_game': False}
 
 			elif event.type == RESTART_EVENT:
+				if ai_thread and ai_thread.is_alive():
+					pass
 				game_loop = False
 				print(f'Restarting level {level}\n')
 				window.fill((0, 0, 0, 0))
@@ -114,86 +197,90 @@ def play_game(window, level=1, random_game=False, random_seed=None, **widgets):
 				game_loop = False
 				print('Loading a random puzzle\n')
 				window.fill((0, 0, 0, 0))
-				new_seed = None
-				try:
-					new_seed = int(widgets['seedbox'].getText())
-					if new_seed < 1 or new_seed > 99999:
-						new_seed = None
-						raise ValueError('Seed must be between 1 and 99999')
-				except ValueError as e:
-					print(e)
-				return {'keep_playing': True, 'reset': 0, 'random_game': True, 'random_seed': new_seed}
+				return {'keep_playing': True, 'reset': 0, 'random_game': True, 'random_seed': None}
 
 			elif event.type == SOLVE_BFS_EVENT:
+				if ai_thread and ai_thread.is_alive():
+					print('AI masih berjalan...')
+					continue
 				print('Finding a solution for the puzzle\n')
 				widgets['paths'].reset('Solving with [BFS]')
 				show_solution = True
 				current_algo = "BFS"
-				start = time.time()
-				solution, depth = solve_bfs(
-					game.get_matrix(),
-					widget=widgets['paths'],
-					visualizer=widgets['toggle'].getValue()
-				)
-				runtime = round(time.time() - start, 5)
-				if solution:
-					widgets['paths'].solved = True
-					widgets['paths'].transparency = True
-					widgets['paths'].set_text(f'[BFS] Solution Found in {runtime}s!\n{solution}', 20)
-					moves = play_solution(solution, game, widgets, show_solution, moves)
-					export_hasil("BFS", level, solution, depth, runtime, len(solution), "Berhasil")
-				else:
-					widgets['paths'].solved = False
-					widgets['paths'].set_text('[BFS] Solution Not Found!\n' + ('Deadlock Found!' if depth < 0 else f'Depth {depth}'), 20)
-					export_hasil("BFS", level, None, depth, runtime, 0, "Tidak Ditemukan")
+				matrix_snapshot = game.get_matrix().copy()
+				ai_start_time = time.time()
+
+				def run_bfs():
+					solution, depth = solve_bfs(
+						matrix_snapshot,
+						vis_queue=None,
+						visualizer=False,
+					)
+					runtime = round(time.time() - ai_start_time, 5)
+					ai_queue.put(('BFS', solution, depth, runtime))
+
+				ai_thread = threading.Thread(target=run_bfs, daemon=True)
+				ai_thread.start()
 
 			elif event.type == SOLVE_ASTARMAN_EVENT:
+				if ai_thread and ai_thread.is_alive():
+					print('AI masih berjalan...')
+					continue
 				print('Finding a solution for the puzzle\n')
 				widgets['paths'].reset('Solving with [A*]')
 				show_solution = True
 				current_algo = "A* (Manhattan)"
-				start = time.time()
-				solution, depth = solve_astar(
-					game.get_matrix(),
-					widget=widgets['paths'],
-					visualizer=widgets['toggle'].getValue(),
-					heuristic='manhattan',
-				)
-				runtime = round(time.time() - start, 5)
-				if solution:
-					widgets['paths'].solved = True
-					widgets['paths'].transparency = True
-					widgets['paths'].set_text(f'[A*] Solution Found in {runtime}s!\n{solution}', 20)
-					moves = play_solution(solution, game, widgets, show_solution, moves)
-					export_hasil("A* (Manhattan)", level, solution, depth, runtime, len(solution), "Berhasil")
-				else:
-					widgets['paths'].solved = False
-					widgets['paths'].set_text('[A*] Solution Not Found!\n' + ('Deadlock Found!' if depth < 0 else f'Depth {depth}'), 20)
-					export_hasil("A* (Manhattan)", level, None, depth, runtime, 0, "Tidak Ditemukan")
+				matrix_snapshot = game.get_matrix().copy()
+				ai_start_time = time.time()
+
+				def run_astar_man():
+					solution, depth = solve_astar(
+						matrix_snapshot,
+						vis_queue=None,
+						visualizer=False,
+						heuristic='manhattan',
+					)
+					runtime = round(time.time() - ai_start_time, 5)
+					ai_queue.put(('A* (Manhattan)', solution, depth, runtime))
+
+				ai_thread = threading.Thread(target=run_astar_man, daemon=True)
+				ai_thread.start()
 
 			elif event.type == SOLVE_DIJKSTRA_EVENT:
+				if ai_thread and ai_thread.is_alive():
+					print('AI masih berjalan...')
+					continue
 				print('Finding a solution for the puzzle\n')
 				widgets['paths'].reset('Solving with [Dijkstra]')
 				show_solution = True
 				current_algo = "Dijkstra"
-				start = time.time()
-				solution, depth = solve_astar(
-					game.get_matrix(),
-					widget=widgets['paths'],
-					visualizer=widgets['toggle'].getValue(),
-					heuristic='dijkstra',
-				)
-				runtime = round(time.time() - start, 5)
-				if solution:
-					widgets['paths'].solved = True
-					widgets['paths'].transparency = True
-					widgets['paths'].set_text(f'[Dijkstra] Solution Found in {runtime}s!\n{solution}', 20)
-					moves = play_solution(solution, game, widgets, show_solution, moves)
-					export_hasil("Dijkstra", level, solution, depth, runtime, len(solution), "Berhasil")
-				else:
-					widgets['paths'].solved = False
-					widgets['paths'].set_text('[Dijkstra] Solution Not Found!\n' + ('Deadlock Found!' if depth < 0 else f'Depth {depth}'), 20)
-					export_hasil("Dijkstra", level, None, depth, runtime, 0, "Tidak Ditemukan")
+				matrix_snapshot = game.get_matrix().copy()
+				ai_start_time = time.time()
+
+				def run_dijkstra():
+					solution, depth = solve_astar(
+						matrix_snapshot,
+						vis_queue=None,
+						visualizer=False,
+						heuristic='dijkstra',
+					)
+					runtime = round(time.time() - ai_start_time, 5)
+					ai_queue.put(('Dijkstra', solution, depth, runtime))
+
+				ai_thread = threading.Thread(target=run_dijkstra, daemon=True)
+				ai_thread.start()
+
+			elif event.type == MOVE_UP_EVENT:
+				moves += game.player.update(key='U')
+
+			elif event.type == MOVE_DOWN_EVENT:
+				moves += game.player.update(key='D')
+
+			elif event.type == MOVE_LEFT_EVENT:
+				moves += game.player.update(key='L')
+
+			elif event.type == MOVE_RIGHT_EVENT:
+				moves += game.player.update(key='R')
 
 			elif event.type == pygame.KEYDOWN:
 				if event.key in (pygame.K_d, pygame.K_RIGHT):
@@ -205,13 +292,33 @@ def play_game(window, level=1, random_game=False, random_seed=None, **widgets):
 				elif event.key in (pygame.K_s, pygame.K_DOWN):
 					moves += game.player.update(key='D')
 
+		# Proses hasil akhir AI
+		try:
+			algo, solution, depth, runtime = ai_queue.get_nowait()
+			label = '[A*]' if algo == 'A* (Manhattan)' else f'[{algo}]'
+
+			if solution:
+				widgets['paths'].solved = True
+				widgets['paths'].transparency = True
+				widgets['paths'].set_text(f'{label} Solution Found in {runtime}s!\n{solution}', 20)
+				moves = play_solution(solution, game, widgets, show_solution, moves)
+				export_hasil(algo, level, solution, depth, runtime, len(solution), "Berhasil")
+			else:
+				widgets['paths'].solved = False
+				widgets['paths'].set_text(
+					f'{label} Solution Not Found!\n' + ('Deadlock Found!' if depth < 0 else f'Depth {depth}'),
+					20
+				)
+				export_hasil(algo, level, None, depth, runtime, 0, "Tidak Ditemukan")
+		except queue.Empty:
+			pass
+
+		# Render
 		game.floor_group.draw(window)
 		game.goal_group.draw(window)
 		game.object_group.draw(window)
 		pygame_widgets.update(events)
 		widgets['label'].draw()
-		widgets['seed'].draw()
-		widgets['visualizer'].draw()
 		widgets['moves_label'].set_moves(f' Moves - {moves} ', 20)
 		if show_solution:
 			widgets['paths'].draw()
@@ -240,17 +347,24 @@ def play_game(window, level=1, random_game=False, random_seed=None, **widgets):
 # ============================================================
 def main():
 	pygame.init()
-	displayIcon = pygame.image.load('img/logoo.png')
-	pygame.display.set_icon(displayIcon)
+
 	window = pygame.display.set_mode((1216, 640))
 	pygame.display.set_caption('Sokoban')
+	show_loading_screen(window, 'Loading...')
+
+	try:
+		displayIcon = pygame.image.load('img/logoo.png')
+		pygame.display.set_icon(displayIcon)
+	except Exception:
+		pass
+
 	level = 1
 	keep_playing = True
 	random_game = False
 	random_seed = None
+
 	widgets = sidebar_widgets(window)
 
-	# Buat file hasil_ai.txt baru di awal
 	with open("hasil_ai.txt", "w", encoding="utf-8") as f:
 		f.write("LAPORAN HASIL GAME SOKOBAN \n")
 		f.write(f"Dibuat pada: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
@@ -271,5 +385,4 @@ def main():
 
 
 if __name__ == '__main__':
-	# wall: +, box: @, player: *, goal: X, box on goal: $, player on goal: %, empty: -
 	main()

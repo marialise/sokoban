@@ -1,7 +1,5 @@
 import pygame
 from pygame_widgets.button import Button
-from pygame_widgets.textbox import TextBox
-from pygame_widgets.toggle import Toggle
 
 from .events import *
 
@@ -33,6 +31,22 @@ def pink_button(window, x, y, width, height, text, font_size, on_click):
         margin=0,
     )
 
+def arrow_button(window, x, y, width, height, text, on_click):
+    return Button(
+        window, x, y, width, height,
+        text=text,
+        radius=12,
+        font=pygame.font.SysFont('dejavusans', 20, bold=True),
+        onClick=on_click,
+        inactiveColour=WHITE,
+        hoverColour=LIGHT_PINK,
+        pressedColour=(255, 210, 230),
+        textColour=PINK,
+        borderColour=PINK,
+        borderColor=PINK,
+        borderThickness=2,
+        margin=0,
+    )
 
 def sidebar_widgets(window):
     prev_button = pink_button(
@@ -54,48 +68,54 @@ def sidebar_widgets(window):
         lambda: pygame.event.post(pygame.event.Event(RESTART_EVENT))
     )
 
-    seed = Label(window, 'Seed', MAIN_X, 205, 15, width=65, height=36)
-
-    seedbox = TextBox(
-        window, MAIN_X + 75, 205, 75, 36,
-        placeholderText='',
-        borderColour=PINK,
-        textColour=PINK,
-        colour=WHITE,
-        onSubmit=lambda: pygame.event.post(pygame.event.Event(RANDOM_GAME_EVENT)),
-        borderThickness=2,
-        radius=10,
-        font=pygame.font.SysFont('Verdana', 14, bold=True),
-    )
-
     random_game = pink_button(
-        window, MAIN_X, 260, MAIN_W, MAIN_H, 'Random', 18,
+        window, MAIN_X, 205, MAIN_W, MAIN_H, 'Random Seed', 18,
         lambda: pygame.event.post(pygame.event.Event(RANDOM_GAME_EVENT))
     )
 
     bfs_button = pink_button(
-        window, MAIN_X, 320, MAIN_W, MAIN_H, 'Solve BFS', 18,
+        window, MAIN_X, 265, MAIN_W, MAIN_H, 'Solve BFS', 18,
         lambda: pygame.event.post(pygame.event.Event(SOLVE_BFS_EVENT))
     )
 
     astarman_button = pink_button(
-        window, MAIN_X, 380, MAIN_W, MAIN_H, 'A* Manhattan', 14,
+        window, MAIN_X, 325, MAIN_W, MAIN_H, 'A* Manhattan', 14,
         lambda: pygame.event.post(pygame.event.Event(SOLVE_ASTARMAN_EVENT))
     )
 
     dijk_button = pink_button(
-        window, MAIN_X, 440, MAIN_W, MAIN_H, 'Dijkstra', 14,
+        window, MAIN_X, 385, MAIN_W, MAIN_H, 'Dijkstra', 14,
         lambda: pygame.event.post(pygame.event.Event(SOLVE_DIJKSTRA_EVENT))
     )
 
-    visualizer = Label(window, 'Visualize', MAIN_X, 500, 15, width=105, height=36)
+    # Directional buttons
+    # Layout:    [↑]
+    #         [←][↓][→]
+    BTN_SIZE = 42
+    GAP = 6
+    TOTAL_W = BTN_SIZE * 3 + GAP * 2
+    DIR_LEFT = MAIN_X + (MAIN_W - TOTAL_W) // 2
+    DIR_Y_TOP = 455
+    DIR_Y_BOT = DIR_Y_TOP + BTN_SIZE + GAP
 
-    toggle = Toggle(
-        window, MAIN_X + 115, 508, 35, 20,
-        handleRadius=11,
-        offColour=GRAY,
-        onColour=LIGHT_PINK,
-        handleColour=WHITE,
+    up_button = arrow_button(
+        window, DIR_LEFT + BTN_SIZE + GAP, DIR_Y_TOP, BTN_SIZE, BTN_SIZE, '↑',
+        lambda: pygame.event.post(pygame.event.Event(MOVE_UP_EVENT))
+    )
+
+    left_button = arrow_button(
+        window, DIR_LEFT, DIR_Y_BOT, BTN_SIZE, BTN_SIZE, '←',
+        lambda: pygame.event.post(pygame.event.Event(MOVE_LEFT_EVENT))
+    )
+
+    down_button = arrow_button(
+        window, DIR_LEFT + BTN_SIZE + GAP, DIR_Y_BOT, BTN_SIZE, BTN_SIZE, '↓',
+        lambda: pygame.event.post(pygame.event.Event(MOVE_DOWN_EVENT))
+    )
+
+    right_button = arrow_button(
+        window, DIR_LEFT + (BTN_SIZE + GAP) * 2, DIR_Y_BOT, BTN_SIZE, BTN_SIZE, '→',
+        lambda: pygame.event.post(pygame.event.Event(MOVE_RIGHT_EVENT))
     )
 
     paths = MultilineLabel(window, 'Solution Depth: 0\n', 64, 0, 20)
@@ -109,14 +129,14 @@ def sidebar_widgets(window):
         'next_button': next_button,
         'label': label,
         'level_clear': level_clear,
-        'toggle': toggle,
-        'visualizer': visualizer,
         'bfs': bfs_button,
         'paths': paths,
-        'seedbox': seedbox,
-        'seed': seed,
         'astarman': astarman_button,
         'dijkstra': dijk_button,
+        'up': up_button,
+        'down': down_button,
+        'left': left_button,
+        'right': right_button,
     }
 
 

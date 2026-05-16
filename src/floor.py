@@ -1,4 +1,5 @@
 import pygame
+from .assets import load
 
 
 class Floor(pygame.sprite.Sprite):
@@ -8,18 +9,9 @@ class Floor(pygame.sprite.Sprite):
         super().__init__(*groups)
 
         if x <= 15:
-            self.image = pygame.image.load(
-                'img/ubin.png'
-            ).convert_alpha()
+            self.image = load('img/ubin.png', (64, 64))
         else:
-            self.image = pygame.image.load(
-                'img/sidefloor.png'
-            ).convert_alpha()
-
-        self.image = pygame.transform.scale(
-            self.image,
-            (64, 64)
-        )
+            self.image = load('img/sidefloor.png', (64, 64))
 
         self.rect = pygame.Rect(
             x * 64,
@@ -52,15 +44,7 @@ class Goal(Floor):
 
         super().__init__(*groups, x=x, y=y)
 
-        self.image = pygame.image.load(
-            'img/paw.png'
-        ).convert_alpha()
-
-        # BESARIN DIKIT LAGI
-        self.image = pygame.transform.scale(
-            self.image,
-            (76, 76)
-        )
+        self.image = load('img/paw.png', (76, 76))
 
         # RECT IKUT IMAGE
         self.rect = self.image.get_rect()
