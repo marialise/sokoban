@@ -109,7 +109,7 @@ def run_generate_threaded(window, random_seed):
 			dot_count = (dot_count + 1) % 4
 			dot_timer = 0
 		dots = '.' * dot_count
-		show_loading_screen(window, message=f'Generating puzzle{dots}')
+		show_loading_screen(window, message=f'Generating puzzle...')
 
 		done = False
 		try:
